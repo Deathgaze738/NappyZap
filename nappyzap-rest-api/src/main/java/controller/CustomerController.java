@@ -23,8 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 import dao.CustomerRepository;
 import dao.SexRepository;
 import dto.CustomerAddressDTO;
+import dto.CustomerTelephoneNumberDTO;
+import dto.CustomerUpdateDTO;
 import model.Address;
 import model.Customer;
+import model.CustomerTelephoneNumber;
 import service.CustomerService;
 
 @RestController
@@ -32,17 +35,30 @@ import service.CustomerService;
 public class CustomerController {
 	
 	private static final String AUTHORIZATION_FAILED = "Authorization denied: Username and password are incorrect.";
-	private static final String ADDRESS_ADD_FAILED = "Adding Address failed: Please ensure that Address Type, Country Code, and Residence Type are valid and formatting is correct.";
+	private static final String CUSTOMER_DELETE_SUCCESS = "Customer data successfully deleted.";
+	private static final String ADDRESS_ADD_FAILED = "Please ensure that Address Type, Country Code, and Residence Type are valid and formatting is correct.";
+	private static final String ADDRESS_EDIT_FAILED = "Please ensure that all of the fields are valid.";
 	private static final String ADDRESS_ADD_SUCCESS = "Address successfully added!";
 	private static final String ADDRESS_DELETE_SUCCESS = "Address successfully deleted!";
-	
-	@Autowired
-	CustomerRepository customerRepository;
-	@Autowired
-	SexRepository sexRepository;
+	private static final String ADDRESS_EDIT_SUCCESS = "Address successfully edited!";
+	private static final String PHONENUMBER_ADD_SUCCESS = "Telephone number successfully added!";
+	private static final String PHONENUMBER_ADD_FAILED = "Please ensure that telephone number and type are valid.";
+	private static final String PHONENUMBER_DELETE_SUCCESS = "Phone Number has been deleted successfully!";
+
 	@Autowired
 	CustomerService customerService;
 	
+	/**
+	 * Checks if the user is authorized, and then checks if the user actually owns the address
+	 * they're trying to delete. If the user fails either of these authorizations, Unauthorized will be returned.
+	 * Deleting an address simply removes the CustomerAddress relation, the actual address is kept for delivery 
+	 * history purposes.
+	 * @param customerId						ID of the customer attempting to delete the address.
+	 * @param addr								ID of the address the customer is trying to delete.
+	 * @param authorization						Authorization header for the User.
+	 * @param response							HTTP Response code
+	 * @return									Returns OK if delete successful, Unauthorized if address isn't owned by user, if Address doesn't exist, or if user isn't authorized.
+	 */
 	@ResponseBody
 	@RequestMapping(value = "/{id}/addresses/{addr}", method = RequestMethod.DELETE)
 	public Object deleteAddress(@PathVariable(value = "id") Long customerId, 
@@ -67,6 +83,29 @@ public class CustomerController {
 		return returnVal;
 	}
 	
+	/**
+	 * Checks if the user is authorized before returning all of their phone numbers.
+	 * @param customerId						ID of the customer.
+	 * @param authorization						Base 64 encoded authorization string
+	 * @param response							Response servlet
+	 * @return									Returns Authorization failed if user authorization fails, or user doesn't exist. Returns list of phone numbers otherwise.
+	 */
+	@RequestMapping(method = RequestMethod.GET, value = "/{id}/phonenos")
+	@ResponseBody
+	public Object getPhoneNumbers(@PathVariable(value = "id") Long customerId, 
+			@RequestHeader("Authorization") String authorization,
+			HttpServletResponse response){
+		Object returnVal = null;
+		if(!customerService.authorize(customerId,  authorization)){
+			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
+		}
+		else{
+			response.setStatus(HttpServletResponse.SC_OK);
+			returnVal = customerService.getTelephoneNumbers(customerId);
+		}
+		return returnVal;
+	}
 	
 	@RequestMapping(method = RequestMethod.POST)
 	@ResponseBody
@@ -74,9 +113,52 @@ public class CustomerController {
 		return customerService.addCustomer(cust);
 	}
 	
-	@RequestMapping(method = RequestMethod.GET)
-	public List<Customer> getCustomers(){
-		return customerRepository.findAll();
+	/**
+	 * Handles deleting a customers user information.
+	 * @param customerId						ID of the customer to be deleted.
+	 * @param authorization						Authorization header of the HTTP request.
+	 * @param response							Response code.
+	 * @return									Returns authorization failed if Authorization header is incorrect, or Deletion success else.
+	 */
+	@RequestMapping(method = RequestMethod.DELETE, value = "/{id}")
+	public Object deleteCustomer(@PathVariable(value = "id") Long customerId,
+			@RequestHeader("Authorization") String authorization,
+			HttpServletResponse response){
+		Object returnVal = null;
+		if(!customerService.authorize(customerId, authorization)){
+			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
+		}
+		else{
+			response.setStatus(HttpServletResponse.SC_OK);
+			customerService.deleteCustomer(customerId);
+			returnVal = new CustomerResponseBody(CUSTOMER_DELETE_SUCCESS, null);
+		}
+		return returnVal;
+	}
+	
+	@ResponseBody
+	@RequestMapping(method = RequestMethod.DELETE, value = "/{id}/phonenos/{no}")
+	public Object deleteTelephoneNumber(@PathVariable(value = "id") Long customerId,
+			@PathVariable(value = "no") Long telephoneId,
+			@RequestHeader("Authorization") String authorization,
+			HttpServletResponse response){
+		Object returnVal = null;
+		if(!customerService.authorize(customerId, authorization)){
+			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
+		}
+		else{
+			if(customerService.deletePhoneNumber(telephoneId, customerId)){
+				response.setStatus(HttpServletResponse.SC_OK);
+				returnVal = new CustomerResponseBody(PHONENUMBER_DELETE_SUCCESS, null);
+			}
+			else{
+				response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+				returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
+			}
+		}
+		return returnVal;
 	}
 	
 	/**
@@ -91,12 +173,14 @@ public class CustomerController {
 	public Object getCustomer(@PathVariable(value = "id") Long customerId, 
 			@RequestHeader("Authorization") String authorization, 
 			HttpServletResponse response){
+		Object returnVal = null;
 		if(!customerService.authorize(customerId, authorization)){
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-			return new CustomerResponseBody(AUTHORIZATION_FAILED, null);
+			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
 		}
 		response.setStatus(HttpServletResponse.SC_OK);
-		return customerRepository.findOne(customerId);
+		returnVal = customerService.getCustomer(customerId);
+		return returnVal;
 	}
 	
 	/**
@@ -138,6 +222,40 @@ public class CustomerController {
 		return returnVal;
 	}
 	
+	/**
+	 * Updates the user data that is updateable. This data is transferred in the CustomerUpdateDTO.
+	 * Update is rejected if the data is not valid according to the Model definitions.
+	 * Update is rejected if the user is not valid.
+	 * @param customerId						ID of the customer being updated
+	 * @param authorization						Authorization header for the customer being updated.
+	 * @param response							HTTPResponse to return code.
+	 * @param customerUpdateDTO					DTO to format incoming update data.
+	 * @return									Returns correct status code and message for outcome.
+	 */
+	@RequestMapping(method = RequestMethod.PUT, value = "/{id}")
+	@ResponseBody
+	public Object editCustomer(@PathVariable(value = "id") Long customerId,
+			@RequestHeader("Authorization") String authorization,
+			HttpServletResponse response,
+			@RequestBody CustomerUpdateDTO customerUpdateDTO){
+		Object returnVal = null;
+		if(customerService.authorize(customerId, authorization)){
+			if(customerService.editCustomer(customerId, customerUpdateDTO)){
+				response.setStatus(HttpServletResponse.SC_OK);
+				returnVal = new CustomerResponseBody(ADDRESS_EDIT_SUCCESS, customerUpdateDTO);
+			}
+			else{
+				response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+				returnVal = new CustomerResponseBody(ADDRESS_EDIT_FAILED, customerUpdateDTO);
+			}
+		}
+		else{
+			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
+			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+		}
+		return returnVal;
+	}
+	
 	
 	/**
 	 * Checks the users credentials in the Authorization header and returns all of their addresses if the authorization passes.
@@ -152,10 +270,36 @@ public class CustomerController {
 			HttpServletResponse response){
 		Object returnVal;
 		if(customerService.authorize(customerId, authorization)){
+			response.setStatus(HttpServletResponse.SC_OK);
 			returnVal = customerService.getAddresses(customerId);
 		}
 		else{
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
+		}
+		return returnVal;
+	}
+	
+	@ResponseBody
+	@RequestMapping(method = RequestMethod.POST, value = "/{id}/phonenos")
+	public Object addPhoneNumber(@PathVariable(value = "id") Long customerId,
+			@RequestHeader("Authorization") String authorization,
+			HttpServletResponse response,
+			@Valid @RequestBody CustomerTelephoneNumberDTO customerTelephoneNumberDTO){
+		Object returnVal = null;
+		if(customerService.authorize(customerId, authorization)){
+			returnVal = customerService.addPhoneNumber(customerId, customerTelephoneNumberDTO);
+			if(returnVal != null){
+				response.setStatus(HttpServletResponse.SC_CREATED);
+				returnVal = new CustomerResponseBody(PHONENUMBER_ADD_SUCCESS, returnVal);
+			}
+			else{
+				response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+				returnVal = new CustomerResponseBody(PHONENUMBER_ADD_FAILED, customerTelephoneNumberDTO);
+			}
+		}
+		else{
+			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
 		}
 		return returnVal;

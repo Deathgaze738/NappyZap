@@ -3,6 +3,9 @@ package service;
 import javax.transaction.Transactional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.config.ResourceNotFoundException;
+import org.springframework.core.io.Resource;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -11,7 +14,10 @@ import dao.EmployeeRepository;
 import dao.EmployeeTypeRepository;
 import dao.SexRepository;
 import dto.EmployeeDetailsDTO;
+import exception.NotFoundException;
+import exception.UnauthorizedException;
 import jar.Login;
+import model.Address;
 import model.Customer;
 import model.Employee;
 import model.EmployeeType;
@@ -38,25 +44,27 @@ public class EmployeeService {
 	 * @param encoded						Base64 encoding of the employee email address and password.
 	 * @return								true is authorized, false if not.	
 	 */
-	public boolean authorize(String encoded, Long employeeId){
+	public Employee authorize(String encoded, Long employeeId){
 		Login login = new Login(encoded);
 		Employee emp = employeeRepo.findOneByEmailAddress(login.getEmail_address());
 		if(emp == null){
-			return false;
-		}
-		if((!emp.getEmailAddress().equals(login.getEmail_address()) || !emp.isActive() || !emp.getJobType().getRoleName().equals("Administrator")) && emp.getEmployeeId() != employeeId){
-			return false;
+			throw new UnauthorizedException("Authorization header " + encoded + " is not valid.");
 		}
 		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-		return encoder.matches(login.getPassword(), emp.getPassword());
+		if(((!emp.isActive() || !emp.getJobType().getRoleName().equals("Administrator")) && emp.getEmployeeId() != employeeId) || !encoder.matches(login.getPassword(), emp.getPassword())){
+			throw new UnauthorizedException("Employee with email " + login.getEmail_address() + " is unauthorized.");
+		}
+		return emp;
 	}
 	
 	@Transactional
-	public Object addEmployee(Employee employee){
-		EmployeeType type = employeeTypeRepo.findOne(employee.getJobType().getTypeId());
-		Sex sex = sexRepo.findOne(employee.getSex().getId());
-		if(sex == null || type == null){
-			return null;
+	public Employee addEmployee(Employee employee, String authorization){
+		if(employeeRepo.findAll().size() != 0){
+			authorize(authorization, 0L);
+		}
+		else{
+			employee.setJobType(employeeTypeRepo.findOne(1L));
+			employee.setActive(true);
 		}
 		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 		employee.setPassword(encoder.encode(employee.getPassword()));
@@ -65,23 +73,42 @@ public class EmployeeService {
 		return employee;
 	}
 	
-	public Employee getEmployee(Long id){
-		return employeeRepo.findOne(id);
+	public Employee getEmployee(String authorization, Long id){
+		authorize(authorization, id);
+		Employee emp = employeeRepo.findOne(id);
+		if(emp == null){
+			throw new NotFoundException("Employee with id '" + id + "' not found.");
+		}
+		return emp;
 	}
 	
-	public Object updateEmployee(Long id, EmployeeDetailsDTO employeeDetails){
+	public Employee updateEmployee(Long id, EmployeeDetailsDTO employeeDetails, String authorization){
+		authorize(authorization, id);
 		Employee emp = employeeRepo.findOne(id);
-		if(sexRepo.exists(employeeDetails.getSex().getId())){
-			emp.setEmailAddress(employeeDetails.getEmailAddress());
-			emp.setFirstName(employeeDetails.getFirstName());
-			emp.setMiddleName(employeeDetails.getMiddleName());
-			emp.setLastName(employeeDetails.getLastName());
-			emp.setSex(employeeDetails.getSex());
-			employeeRepo.save(emp);
+		if(emp == null){
+			throw new NotFoundException("Employee with id '" + id + "' not found.");
 		}
-		else{
-			return null;
+		emp.setEmailAddress(employeeDetails.getEmailAddress());
+		emp.setFirstName(employeeDetails.getFirstName());
+		emp.setMiddleName(employeeDetails.getMiddleName());
+		emp.setLastName(employeeDetails.getLastName());
+		emp.setSex(employeeDetails.getSex());
+		employeeRepo.save(emp);
+		return emp;
+	}
+	
+	@Transactional
+	public Employee updateAddress(String authorization, Long empId, Address newAddress){
+		authorize(authorization, empId);
+		Employee emp = employeeRepo.findOne(empId);
+		if(emp == null){
+			throw new NotFoundException("Employee with id '" + empId + "' not found.");
 		}
+		Address oldAddress = emp.getHomeAddress();
+		emp.setHomeAddress(newAddress);
+		addressRepo.save(newAddress);
+		employeeRepo.save(emp);
+		addressRepo.delete(oldAddress);
 		return emp;
 	}
 }

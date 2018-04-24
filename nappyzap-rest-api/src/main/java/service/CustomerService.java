@@ -1,5 +1,6 @@
 package service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,6 +27,10 @@ import dao.TelephoneNumberTypeRepository;
 import dto.CustomerAddressDTO;
 import dto.CustomerTelephoneNumberDTO;
 import dto.CustomerUpdateDTO;
+import dto.TelephoneNumberDTO;
+import exception.MappingProviderException;
+import exception.NotFoundException;
+import exception.UnauthorizedException;
 import jar.Login;
 import model.Address;
 import model.AddressType;
@@ -76,32 +81,23 @@ public class CustomerService {
 	 * @return									Returns null if the request is malformed, returns customer telephone number if the request succeeded.
 	 */
 	@Transactional(rollbackFor = Exception.class)
-	public Object addPhoneNumber(Long custId, CustomerTelephoneNumberDTO custTeleDTO){
-		Object returnVal = null;
-		try{
-			Customer cust = customerRepo.findOne(custId);
-			TelephoneNumber number = custTeleDTO.getTelephoneNumber();
-			telephoneNumberRepo.save(number);
-			TelephoneNumberType type = telephoneNumberTypeRepo.findOne(custTeleDTO.getTypeId());
-			//If Foreign key exists.
-			if(type != null){
-				CustomerTelephoneNumberId custTeleId = new CustomerTelephoneNumberId();
-				custTeleId.setOwner(cust);
-				custTeleId.setType(type);
-				CustomerTelephoneNumber custTeleNo = customerTelephoneNumberRepo.findOne(custTeleId);
-				//If customer already has a number of that type.
-				if(custTeleNo == null){
-					custTeleNo = new CustomerTelephoneNumber();
-				}
-				custTeleNo.setCustomerTelephoneNumberId(custTeleId);
-				custTeleNo.setNumber(number);
-				customerTelephoneNumberRepo.save(custTeleNo);
-				returnVal = custTeleNo;
-			}
-		}catch(Exception e){
-
+	public TelephoneNumber addPhoneNumber(String authorization, Long custId, CustomerTelephoneNumberDTO custTeleDTO){
+		Customer cust = authorize(custId, authorization);
+		TelephoneNumber number = custTeleDTO.getTelephoneNumber();
+		telephoneNumberRepo.save(number);
+		TelephoneNumberType type = telephoneNumberTypeRepo.findOne(custTeleDTO.getTypeId());
+		CustomerTelephoneNumberId custTeleId = new CustomerTelephoneNumberId();
+		custTeleId.setOwner(cust);
+		custTeleId.setType(type);
+		CustomerTelephoneNumber custTeleNo = customerTelephoneNumberRepo.findOne(custTeleId);
+		//If customer already has a number of that type.
+		if(custTeleNo == null){
+			custTeleNo = new CustomerTelephoneNumber();
 		}
-		return returnVal;
+		custTeleNo.setCustomerTelephoneNumberId(custTeleId);
+		custTeleNo.setNumber(number);
+		customerTelephoneNumberRepo.save(custTeleNo);
+		return number;
 	}
 	
 	/**
@@ -111,18 +107,14 @@ public class CustomerService {
 	 * @param customerUpdateDTO						DTO of the information to update within customer.
 	 * @return										True if DTO is well formed and constraints hold, false otherwise.
 	 */
-	public boolean editCustomer(Long custId, CustomerUpdateDTO customerUpdateDTO){
-		try{
-			Customer cust = customerRepo.findOne(custId);
-			cust.setDate_of_birth(customerUpdateDTO.getDate_of_birth());
-			cust.setFirst_name(customerUpdateDTO.getFirst_name());
-			cust.setLast_name(customerUpdateDTO.getLast_name());
-			cust.setSex_entity(sexRepo.findOne(customerUpdateDTO.getSex_id()));
-			customerRepo.save(cust);
-		}catch(Exception e){
-			return false;
-		}
-		return true;
+	public Customer editCustomer(String authorization, Long custId, CustomerUpdateDTO customerUpdateDTO){
+		Customer cust = authorize(custId, authorization);
+		cust.setDate_of_birth(customerUpdateDTO.getDate_of_birth());
+		cust.setFirst_name(customerUpdateDTO.getFirst_name());
+		cust.setLast_name(customerUpdateDTO.getLast_name());
+		cust.setSex_entity(sexRepo.findOne(customerUpdateDTO.getSex_id()));
+		customerRepo.save(cust);
+		return cust;
 	}
 	
 	/**
@@ -130,12 +122,9 @@ public class CustomerService {
 	 * Password is hashed and salted using the BCryptEncoder class.
 	 * An email confirmation token is created and emailed to the user for verification.
 	 * @param cust						Customer object containing new user information.
-	 * @return							Returns the customer object of the new user if successful, returns error CustomerResponseBody otherwise.
+	 * @return							Returns the customer object of the new user if successful, returns error  otherwise.
 	 */
-	public Object addCustomer(Customer cust){
-		if(sexRepo.findOne(cust.getSex_entity().getId()) == null){
-			return new CustomerResponseBody(SEX_NOT_VALID, cust);
-		}
+	public Customer addCustomer(Customer cust){
 		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 		cust.setPassword(encoder.encode(cust.getPassword()));
 		cust.setEmail_confirmation_token(UUID.randomUUID().toString());
@@ -152,13 +141,13 @@ public class CustomerService {
 	 * @return							True if deleted successfully, false if the user isn't the owner of the address, or the address doesn't exist.
 	 */
 	@Transactional
-	public boolean deleteAddress(Long addressId, Long custId){
+	public void deleteAddress(String authorization, Long addressId, Long custId){
+		authorize(custId, authorization);
 		CustomerAddress custAddr = customerAddressRepo.findOneByCustomerAddressIdOwnerIdCustomerIdAndCustomerAddressIdAddressIdAddressId(custId, addressId);
 		if(custAddr == null){
-			return false;
+			throw new NotFoundException("Address with ID '" + addressId + "' does not exist, or does not belong to you.");
 		}
 		customerAddressRepo.delete(custAddr);
-		return true;
 	}
 	
 	/**
@@ -168,14 +157,15 @@ public class CustomerService {
 	 * @param custId					Id of the customer number.
 	 * @return							True if deleted successfully, false if the isn't the owner of the phone number, or the number doesn't exist.
 	 */
-	public boolean deletePhoneNumber(Long phoneNumberId, Long custId){
+	@Transactional
+	public void deletePhoneNumber(String authorization, Long phoneNumberId, Long custId){
+		authorize(custId, authorization);
 		CustomerTelephoneNumber custPhone = customerTelephoneNumberRepo.findOneByCustomerTelephoneNumberIdOwnerCustomerIdAndNumberTelephoneNoId(custId, phoneNumberId);
 		if(custPhone == null){
-			return false;
+			throw new NotFoundException("Telephone Number with ID '" + phoneNumberId + "' does not exist, or does not belong to you.");
 		}
 		customerTelephoneNumberRepo.delete(custPhone.getCustomerTelephoneNumberId());
 		telephoneNumberRepo.delete(custPhone.getNumber());
-		return true;
 	}
 	
 	/**
@@ -185,7 +175,8 @@ public class CustomerService {
 	 * between a user and this information are completely deleted. Retaining the information we need, but deleting any identifiable mappings.
 	 * @param custId					Id of the customer to be deleted.
 	 */
-	public void deleteCustomer(Long custId){
+	public void deleteCustomer(String authorization, Long custId){
+		authorize(custId, authorization);
 		customerRepo.delete(custId);
 	}
 	
@@ -194,7 +185,8 @@ public class CustomerService {
 	 * @param custId					ID of the customer to be retrieved
 	 * @return							Returns customer, null if customer doesn't exist.
 	 */
-	public Customer getCustomer(Long custId){
+	public Customer getCustomer(String authorization, Long custId){
+		authorize(custId, authorization);
 		return customerRepo.findOne(custId);
 	}
 	
@@ -207,32 +199,15 @@ public class CustomerService {
 	 * @return								Returns CustomerAddressDTO of the new address if all conditions hold, else returns null.
 	 */
 	@Transactional(rollbackFor = Exception.class)
-	public CustomerAddressDTO addAddress(CustomerAddressDTO customerAddressDTO, Long cust){
-		Customer custObj = customerRepo.findOne(cust);
+	public Address addAddress(String authorization, CustomerAddressDTO customerAddressDTO, Long cust){
+		Customer custObj = authorize(cust, authorization);
 		Address address = customerAddressDTO.getAddress();
-		CountryCode countryCode = address.getCountry_code();
 		AddressType addressType = customerAddressDTO.getAddressType();
 		ResidenceType residenceType = customerAddressDTO.getResidenceType();
 		
-		try{
-			countryCode = countryCodeRepo.findOne(countryCode.getIso_code());
-			addressType = addressTypeRepo.findOne(addressType.getAddressTypeId());
-			residenceType = residenceTypeRepo.findOne(residenceType.getResidenceTypeId());
-		}catch(IllegalArgumentException e){
-			return null;
-		}
-		
-		//Verify that all of the foreign keys exist.
-		if(countryCode == null || addressType == null || residenceType == null){
-			return null;
-		}
-		
-		customerAddressDTO.setAddressType(addressType);
-		customerAddressDTO.setResidenceType(residenceType);
-		address.setCountry_code(countryCode);
 		//Get Lat and Lng data from Google Maps.
 		if(googleMapProvider.getLatLng(address) == null){
-			return null;
+			throw new MappingProviderException("An error was encountered with our geocoding provider. Please contact a system administrator.");
 		}
 		
 		//Check if the user already has a delivery address associated with this account.
@@ -256,7 +231,7 @@ public class CustomerService {
 		customerAddress.setResidenceType(residenceType);
 		customerAddress.setNotes(customerAddressDTO.getNotes());
 		customerAddressRepo.save(customerAddress);
-		return customerAddressDTO;
+		return address;
 	}
 	
 	/**
@@ -265,17 +240,17 @@ public class CustomerService {
 	 * @param encoded					Password and Email Address encoded in Base64.
 	 * @return							Returns true if the user is authorized, else false.
 	 */
-	public boolean authorize(Long customerId, String encoded){
+	public Customer authorize(Long customerId, String encoded){
 		Customer cust = customerRepo.findOne(customerId);
 		Login login = new Login(encoded);
 		if(cust == null){
-			return false;
-		}
-		if(!cust.getEmail_address().equals(login.getEmail_address()) || !cust.isEmail_verified()){
-			return false;
+			throw new UnauthorizedException("Authorization header '" + encoded + "' is not valid.");
 		}
 		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-		return encoder.matches(login.getPassword(), cust.getPassword());
+		if(!cust.getEmail_address().equals(login.getEmail_address()) || !cust.isEmail_verified() || !encoder.matches(login.getPassword(), cust.getPassword())){
+			throw new UnauthorizedException("Customer with email '" + login.getEmail_address() + "' not authorized.");
+		}
+		return cust;
 	}
 	
 	/**
@@ -283,8 +258,19 @@ public class CustomerService {
 	 * @param customerId					ID of the customer owning the addresses
 	 * @return								Returns all address related to the customer id
 	 */
-	public List<CustomerAddress> getAddresses(Long customerId){
-		return customerAddressRepo.findAllByCustomerAddressIdOwnerIdCustomerId(customerId);
+	public List<CustomerAddressDTO> getAddresses(String authorization, Long customerId){
+		authorize(customerId, authorization);
+		List<CustomerAddress> addresses = customerAddressRepo.findAllByCustomerAddressIdOwnerIdCustomerId(customerId);
+		List<CustomerAddressDTO> dtos = new ArrayList<CustomerAddressDTO>();
+		for(CustomerAddress custAddr : addresses){
+			CustomerAddressDTO dto = new CustomerAddressDTO();
+			dto.setAddress(custAddr.getCustomerAddressId().getAddressId());
+			dto.setAddressType(custAddr.getAddressType());
+			dto.setResidenceType(custAddr.getResidenceType());
+			dto.setNotes(custAddr.getNotes());
+			dtos.add(dto);
+		}
+		return dtos;
 	}
 	
 	/**
@@ -292,7 +278,16 @@ public class CustomerService {
 	 * @param customerId					ID of the customer owning the telephone numbers.
 	 * @return								Returns all telephone numbers related to the customer id.
 	 */
-	public List<CustomerTelephoneNumber> getTelephoneNumbers(Long customerId){
-		return customerTelephoneNumberRepo.findAllByCustomerTelephoneNumberIdOwnerCustomerId(customerId);
+	public List<TelephoneNumberDTO> getTelephoneNumbers(String authorization, Long customerId){
+		authorize(customerId, authorization);
+		List<CustomerTelephoneNumber> customerPhoneNumbers = customerTelephoneNumberRepo.findAllByCustomerTelephoneNumberIdOwnerCustomerId(customerId);
+		List<TelephoneNumberDTO> telephoneNumbers = new ArrayList<TelephoneNumberDTO>();
+		for(CustomerTelephoneNumber custTeleNum : customerPhoneNumbers){
+			TelephoneNumberDTO dto = new TelephoneNumberDTO();
+			dto.setTelephoneNumber(custTeleNum.getNumber());
+			dto.setType(custTeleNum.getCustomerTelephoneNumberId().getType());
+			telephoneNumbers.add(dto);
+		}
+		return telephoneNumbers;
 	}
 }

@@ -25,26 +25,16 @@ import dao.SexRepository;
 import dto.CustomerAddressDTO;
 import dto.CustomerTelephoneNumberDTO;
 import dto.CustomerUpdateDTO;
+import dto.TelephoneNumberDTO;
 import model.Address;
 import model.Customer;
 import model.CustomerTelephoneNumber;
+import model.TelephoneNumber;
 import service.CustomerService;
 
 @RestController
 @RequestMapping("/customers")
 public class CustomerController {
-	
-	private static final String AUTHORIZATION_FAILED = "Authorization denied: Username and password are incorrect.";
-	private static final String CUSTOMER_DELETE_SUCCESS = "Customer data successfully deleted.";
-	private static final String ADDRESS_ADD_FAILED = "Please ensure that Address Type, Country Code, and Residence Type are valid and formatting is correct.";
-	private static final String ADDRESS_EDIT_FAILED = "Please ensure that all of the fields are valid.";
-	private static final String ADDRESS_ADD_SUCCESS = "Address successfully added!";
-	private static final String ADDRESS_DELETE_SUCCESS = "Address successfully deleted!";
-	private static final String ADDRESS_EDIT_SUCCESS = "Address successfully edited!";
-	private static final String PHONENUMBER_ADD_SUCCESS = "Telephone number successfully added!";
-	private static final String PHONENUMBER_ADD_FAILED = "Please ensure that telephone number and type are valid.";
-	private static final String PHONENUMBER_DELETE_SUCCESS = "Phone Number has been deleted successfully!";
-
 	@Autowired
 	CustomerService customerService;
 	
@@ -59,28 +49,11 @@ public class CustomerController {
 	 * @param response							HTTP Response code
 	 * @return									Returns OK if delete successful, Unauthorized if address isn't owned by user, if Address doesn't exist, or if user isn't authorized.
 	 */
-	@ResponseBody
 	@RequestMapping(value = "/{id}/addresses/{addr}", method = RequestMethod.DELETE)
-	public Object deleteAddress(@PathVariable(value = "id") Long customerId, 
+	public void deleteAddress(@PathVariable(value = "id") Long customerId, 
 			@PathVariable(value = "addr") Long addr, 
-			@RequestHeader("Authorization") String authorization, 
-			HttpServletResponse response){
-		Object returnVal = null;
-		if(!customerService.authorize(customerId, authorization)){
-			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
-		}
-		else{
-			if(customerService.deleteAddress(addr, customerId)){
-				response.setStatus(HttpServletResponse.SC_OK);
-				returnVal = new CustomerResponseBody(ADDRESS_DELETE_SUCCESS, null);
-			}
-			else{
-				response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-				returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, "Not your address.");
-			}
-		}
-		return returnVal;
+			@RequestHeader("Authorization") String authorization){
+		customerService.deleteAddress(authorization, addr, customerId);
 	}
 	
 	/**
@@ -91,25 +64,13 @@ public class CustomerController {
 	 * @return									Returns Authorization failed if user authorization fails, or user doesn't exist. Returns list of phone numbers otherwise.
 	 */
 	@RequestMapping(method = RequestMethod.GET, value = "/{id}/phonenos")
-	@ResponseBody
-	public Object getPhoneNumbers(@PathVariable(value = "id") Long customerId, 
-			@RequestHeader("Authorization") String authorization,
-			HttpServletResponse response){
-		Object returnVal = null;
-		if(!customerService.authorize(customerId,  authorization)){
-			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
-		}
-		else{
-			response.setStatus(HttpServletResponse.SC_OK);
-			returnVal = customerService.getTelephoneNumbers(customerId);
-		}
-		return returnVal;
+	public List<TelephoneNumberDTO> getPhoneNumbers(@PathVariable(value = "id") Long customerId, 
+			@RequestHeader("Authorization") String authorization){
+		return customerService.getTelephoneNumbers(authorization, customerId);
 	}
 	
 	@RequestMapping(method = RequestMethod.POST)
-	@ResponseBody
-	public Object add(@Valid @RequestBody Customer cust){
+	public Customer add(@Valid @RequestBody Customer cust){
 		return customerService.addCustomer(cust);
 	}
 	
@@ -121,44 +82,16 @@ public class CustomerController {
 	 * @return									Returns authorization failed if Authorization header is incorrect, or Deletion success else.
 	 */
 	@RequestMapping(method = RequestMethod.DELETE, value = "/{id}")
-	public Object deleteCustomer(@PathVariable(value = "id") Long customerId,
-			@RequestHeader("Authorization") String authorization,
-			HttpServletResponse response){
-		Object returnVal = null;
-		if(!customerService.authorize(customerId, authorization)){
-			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
-		}
-		else{
-			response.setStatus(HttpServletResponse.SC_OK);
-			customerService.deleteCustomer(customerId);
-			returnVal = new CustomerResponseBody(CUSTOMER_DELETE_SUCCESS, null);
-		}
-		return returnVal;
+	public void deleteCustomer(@PathVariable(value = "id") Long customerId,
+			@RequestHeader("Authorization") String authorization){
+		customerService.deleteCustomer(authorization, customerId);
 	}
 	
-	@ResponseBody
 	@RequestMapping(method = RequestMethod.DELETE, value = "/{id}/phonenos/{no}")
-	public Object deleteTelephoneNumber(@PathVariable(value = "id") Long customerId,
+	public void deleteTelephoneNumber(@PathVariable(value = "id") Long customerId,
 			@PathVariable(value = "no") Long telephoneId,
-			@RequestHeader("Authorization") String authorization,
-			HttpServletResponse response){
-		Object returnVal = null;
-		if(!customerService.authorize(customerId, authorization)){
-			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
-		}
-		else{
-			if(customerService.deletePhoneNumber(telephoneId, customerId)){
-				response.setStatus(HttpServletResponse.SC_OK);
-				returnVal = new CustomerResponseBody(PHONENUMBER_DELETE_SUCCESS, null);
-			}
-			else{
-				response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-				returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
-			}
-		}
-		return returnVal;
+			@RequestHeader("Authorization") String authorization){
+		customerService.deletePhoneNumber(authorization, telephoneId, customerId);
 	}
 	
 	/**
@@ -168,19 +101,10 @@ public class CustomerController {
 	 * @param response				HTTP Response Header.
 	 * @return						Returns a customer object for the ID, or an Authorization error should this fail.
 	 */
-	@ResponseBody
 	@RequestMapping(method = RequestMethod.GET, value = "/{id}")
-	public Object getCustomer(@PathVariable(value = "id") Long customerId, 
-			@RequestHeader("Authorization") String authorization, 
-			HttpServletResponse response){
-		Object returnVal = null;
-		if(!customerService.authorize(customerId, authorization)){
-			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
-		}
-		response.setStatus(HttpServletResponse.SC_OK);
-		returnVal = customerService.getCustomer(customerId);
-		return returnVal;
+	public Customer getCustomer(@PathVariable(value = "id") Long customerId, 
+			@RequestHeader("Authorization") String authorization){
+		return customerService.getCustomer(authorization, customerId);
 	}
 	
 	/**
@@ -198,28 +122,10 @@ public class CustomerController {
 	 * @return						Returns a CustomerResponseBody containing results of request.
 	 */
 	@RequestMapping(method = RequestMethod.POST, value = "/{id}/addresses")
-	@ResponseBody
-	public Object addAddress(@Valid @RequestBody CustomerAddressDTO customerAddressDTO, 
+	public Address addAddress(@Valid @RequestBody CustomerAddressDTO customerAddressDTO, 
 			@PathVariable(value = "id") Long customerId,
-			@RequestHeader("Authorization") String authorization, 
-			HttpServletResponse response){
-		Object returnVal = null;
-		if(!customerService.authorize(customerId, authorization)){
-			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
-		}
-		else{
-			CustomerAddressDTO result = customerService.addAddress(customerAddressDTO, customerId);
-			if(result == null){
-				response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-				returnVal = new CustomerResponseBody(ADDRESS_ADD_FAILED, result);
-			}
-			else{
-				response.setStatus(HttpServletResponse.SC_CREATED);
-				returnVal = new CustomerResponseBody(ADDRESS_ADD_SUCCESS, result);
-			}
-		}
-		return returnVal;
+			@RequestHeader("Authorization") String authorization){
+		return customerService.addAddress(authorization, customerAddressDTO, customerId);
 	}
 	
 	/**
@@ -233,27 +139,10 @@ public class CustomerController {
 	 * @return									Returns correct status code and message for outcome.
 	 */
 	@RequestMapping(method = RequestMethod.PUT, value = "/{id}")
-	@ResponseBody
-	public Object editCustomer(@PathVariable(value = "id") Long customerId,
+	public Customer editCustomer(@PathVariable(value = "id") Long customerId,
 			@RequestHeader("Authorization") String authorization,
-			HttpServletResponse response,
 			@RequestBody CustomerUpdateDTO customerUpdateDTO){
-		Object returnVal = null;
-		if(customerService.authorize(customerId, authorization)){
-			if(customerService.editCustomer(customerId, customerUpdateDTO)){
-				response.setStatus(HttpServletResponse.SC_OK);
-				returnVal = new CustomerResponseBody(ADDRESS_EDIT_SUCCESS, customerUpdateDTO);
-			}
-			else{
-				response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-				returnVal = new CustomerResponseBody(ADDRESS_EDIT_FAILED, customerUpdateDTO);
-			}
-		}
-		else{
-			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
-			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-		}
-		return returnVal;
+		return customerService.editCustomer(authorization, customerId, customerUpdateDTO);
 	}
 	
 	
@@ -265,44 +154,16 @@ public class CustomerController {
 	 * @return								Return addresses if authorized, return an error and forbidden response else.
 	 */
 	@RequestMapping(method = RequestMethod.GET, value = "/{id}/addresses")
-	public Object getAddresses(@PathVariable(value = "id") Long customerId, 
-			@RequestHeader("Authorization") String authorization, 
-			HttpServletResponse response){
-		Object returnVal;
-		if(customerService.authorize(customerId, authorization)){
-			response.setStatus(HttpServletResponse.SC_OK);
-			returnVal = customerService.getAddresses(customerId);
-		}
-		else{
-			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
-		}
-		return returnVal;
+	public List<CustomerAddressDTO> getAddresses(@PathVariable(value = "id") Long customerId, 
+			@RequestHeader("Authorization") String authorization){
+		return customerService.getAddresses(authorization, customerId);
 	}
 	
-	@ResponseBody
 	@RequestMapping(method = RequestMethod.POST, value = "/{id}/phonenos")
-	public Object addPhoneNumber(@PathVariable(value = "id") Long customerId,
+	public TelephoneNumber addPhoneNumber(@PathVariable(value = "id") Long customerId,
 			@RequestHeader("Authorization") String authorization,
-			HttpServletResponse response,
 			@Valid @RequestBody CustomerTelephoneNumberDTO customerTelephoneNumberDTO){
-		Object returnVal = null;
-		if(customerService.authorize(customerId, authorization)){
-			returnVal = customerService.addPhoneNumber(customerId, customerTelephoneNumberDTO);
-			if(returnVal != null){
-				response.setStatus(HttpServletResponse.SC_CREATED);
-				returnVal = new CustomerResponseBody(PHONENUMBER_ADD_SUCCESS, returnVal);
-			}
-			else{
-				response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-				returnVal = new CustomerResponseBody(PHONENUMBER_ADD_FAILED, customerTelephoneNumberDTO);
-			}
-		}
-		else{
-			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-			returnVal = new CustomerResponseBody(AUTHORIZATION_FAILED, null);
-		}
-		return returnVal;
+		return customerService.addPhoneNumber(authorization, customerId, customerTelephoneNumberDTO);
 	}
 }
 

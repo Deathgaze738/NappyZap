@@ -1,5 +1,6 @@
 package dto;
 
+import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
 import model.Address;
@@ -8,10 +9,13 @@ import model.ResidenceType;
 
 public class CustomerAddressDTO {
 	@NotNull
+	@Valid
 	private Address address;
 	@NotNull
+	@Valid
 	private AddressType addressType;
 	@NotNull
+	@Valid
 	private ResidenceType residenceType;
 	private String notes;
 	public Address getAddress() {

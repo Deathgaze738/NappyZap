@@ -39,4 +39,9 @@ public class RouteStopId implements Serializable{
 	public void setStopNum(int stopNum) {
 		this.stopNum = stopNum;
 	}
+	
+	@Override
+	public String toString(){
+		return route.getId() + ":" + stopNum;
+	}
 }

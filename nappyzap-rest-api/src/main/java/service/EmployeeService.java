@@ -57,6 +57,10 @@ public class EmployeeService {
 		return emp;
 	}
 	
+	public Employee authorize(String encoded){
+		return authorize(encoded, 0L);
+	}
+	
 	@Transactional
 	public Employee addEmployee(Employee employee, String authorization){
 		if(employeeRepo.findAll().size() != 0){

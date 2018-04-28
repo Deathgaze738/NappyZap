@@ -4,30 +4,18 @@ import java.sql.Timestamp;
 
 public class RoadRouteDTO {
 	
-	private double roadDistance;
-	private double timeTaken;
+	private Long roadDistance;
+	private Long timeTaken;
 	private Timestamp timeRetrieved;
 	
-	public RoadRouteDTO(double roadDistance, double timeTaken, Timestamp timeRetrieved){
+	public RoadRouteDTO(Long roadDistance, Long timeTaken, Timestamp timeRetrieved){
 		this.roadDistance = roadDistance;
 		this.timeTaken = timeTaken;
 		this.timeRetrieved = timeRetrieved;
 	}
 
-	public double getRoadDistance() {
-		return roadDistance;
-	}
-
-	public void setRoadDistance(double roadDistance) {
-		this.roadDistance = roadDistance;
-	}
-
-	public double getTimeTaken() {
-		return timeTaken;
-	}
-
-	public void setTimeTaken(double timeTaken) {
-		this.timeTaken = timeTaken;
+	public RoadRouteDTO() {
+		
 	}
 
 	public Timestamp getTimeRetrieved() {
@@ -36,5 +24,21 @@ public class RoadRouteDTO {
 
 	public void setTimeRetrieved(Timestamp timeRetrieved) {
 		this.timeRetrieved = timeRetrieved;
+	}
+
+	public Long getRoadDistance() {
+		return roadDistance;
+	}
+
+	public void setRoadDistance(Long roadDistance) {
+		this.roadDistance = roadDistance;
+	}
+
+	public Long getTimeTaken() {
+		return timeTaken;
+	}
+
+	public void setTimeTaken(Long timeTaken) {
+		this.timeTaken = timeTaken;
 	}
 }

@@ -1,4 +1,4 @@
-package controller;
+package exception;
 
 import javax.validation.ConstraintViolationException;
 
@@ -20,10 +20,6 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-
-import exception.MappingProviderException;
-import exception.NotFoundException;
-import exception.UnauthorizedException;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @ControllerAdvice
@@ -51,7 +47,7 @@ public class CustomExceptionHandler extends ResponseEntityExceptionHandler{
 		return new ResponseEntity<>(defaultError, defaultError.getStatus());
 	}
 	
-	@ExceptionHandler({DataIntegrityViolationException.class, TransactionSystemException.class})
+	@ExceptionHandler({DataIntegrityViolationException.class, TransactionSystemException.class, ConstraintViolationException.class})
 	public ResponseEntity<Object> handleDataIntegrityViolation(Exception ex){
 		String error = "Validation constraint failed!";
 		return buildResponseEntity(new DefaultError(HttpStatus.BAD_REQUEST, ex, error));
@@ -67,5 +63,11 @@ public class CustomExceptionHandler extends ResponseEntityExceptionHandler{
 	public ResponseEntity<Object> handleMappingProvider(MappingProviderException ex){
 		String error = "Mapping provider error.";
 		return buildResponseEntity(new DefaultError(HttpStatus.INTERNAL_SERVER_ERROR, ex, error));
+	}
+	
+	@ExceptionHandler(RoutingException.class)
+	public ResponseEntity<Object> handleRouting(RoutingException ex){
+		String error = "Routing error.";
+		return buildResponseEntity(new DefaultError(HttpStatus.BAD_REQUEST, ex, error));
 	}
 }

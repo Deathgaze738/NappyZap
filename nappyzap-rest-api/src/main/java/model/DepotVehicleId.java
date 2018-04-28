@@ -19,7 +19,7 @@ public class DepotVehicleId implements Serializable{
 	private Depot depot;
 	
 	@OneToOne
-	@JoinColumn(name = "vehicle_registration")
+	@JoinColumn(name = "vehicle_id")
 	private Vehicle vehicle;
 
 	public Depot getDepot() {

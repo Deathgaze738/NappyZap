@@ -14,6 +14,8 @@ import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
 
+import org.springframework.data.annotation.Transient;
+
 @Entity
 @Table(name = "route")
 public class Route {
@@ -23,7 +25,7 @@ public class Route {
 	private Long id;
 	
 	@ManyToOne
-	@JoinColumn(name = "vehicle_reg")
+	@JoinColumn(name = "vehicle_id")
 	@NotNull
 	private Vehicle vehicle;
 	
@@ -31,9 +33,6 @@ public class Route {
 	@JoinColumn(name = "shift")
 	@NotNull
 	private Shift shift;
-	
-	@OneToMany(mappedBy = "route")
-	private Set<RouteStop> stops;
 	
 	@NotNull
 	private Date date;
@@ -60,14 +59,6 @@ public class Route {
 
 	public void setShift(Shift shift) {
 		this.shift = shift;
-	}
-
-	public Set<RouteStop> getStops() {
-		return stops;
-	}
-
-	public void setStops(Set<RouteStop> stops) {
-		this.stops = stops;
 	}
 
 	public Date getDate() {

@@ -1,5 +1,6 @@
 package controller;
 
+import java.sql.Date;
 import java.util.List;
 
 import javax.servlet.http.HttpServletResponse;
@@ -25,18 +26,26 @@ import dao.SexRepository;
 import dto.CustomerAddressDTO;
 import dto.CustomerTelephoneNumberDTO;
 import dto.CustomerUpdateDTO;
+import dto.OrderDTO;
+import dto.ShiftAvailabilityDTO;
 import dto.TelephoneNumberDTO;
 import model.Address;
 import model.Customer;
 import model.CustomerTelephoneNumber;
+import model.Visit;
+import model.Route;
 import model.TelephoneNumber;
 import service.CustomerService;
+import service.RoutingService;
 
 @RestController
 @RequestMapping("/customers")
 public class CustomerController {
 	@Autowired
 	CustomerService customerService;
+	
+	@Autowired
+	RoutingService routingService;
 	
 	/**
 	 * Checks if the user is authorized, and then checks if the user actually owns the address
@@ -164,6 +173,20 @@ public class CustomerController {
 			@RequestHeader("Authorization") String authorization,
 			@Valid @RequestBody CustomerTelephoneNumberDTO customerTelephoneNumberDTO){
 		return customerService.addPhoneNumber(authorization, customerId, customerTelephoneNumberDTO);
+	}
+	
+	@RequestMapping(method = RequestMethod.GET, value = "/{id}/available")
+	public List<ShiftAvailabilityDTO> getAvailability(@PathVariable(value = "id") Long customerId,
+			@RequestParam("date") Date date,
+			@RequestHeader("Authorization") String authorization){
+		return routingService.checkAvailability(authorization, customerId, date);
+	}
+	
+	@RequestMapping(method = RequestMethod.POST, value = "/{id}/orders")
+	public Visit addOrder(@PathVariable("id") Long customerId,
+			@RequestBody @Valid OrderDTO orderDto,
+			@RequestHeader("Authorization") String authorization){
+		return routingService.addOrder(authorization, customerId, orderDto);
 	}
 }
 

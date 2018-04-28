@@ -11,6 +11,7 @@ import javax.persistence.JoinColumn;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 
 @Entity
 @Table(name = "depot")
@@ -24,9 +25,6 @@ public class Depot {
 	@JoinColumn(name = "depot_address")
 	private Address address;
 	
-	@OneToMany(mappedBy = "depot")
-	private Set<Product> products;
-
 	public Long getId() {
 		return id;
 	}

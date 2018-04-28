@@ -11,6 +11,7 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 
@@ -36,7 +37,7 @@ public class Product {
 	
 	@ManyToOne
 	@JoinColumn(name = "currency")
-	private String currency;
+	private CurrencyCode currency;
 	
 	@NotNull
 	@Column(name = "height")
@@ -49,9 +50,6 @@ public class Product {
 	@NotNull
 	@Column(name = "depth")
 	private int depth;
-	
-	@OneToMany(mappedBy = "product")
-	private Set<ProductPhoto> photos;
 
 	public Long getId() {
 		return id;
@@ -85,14 +83,6 @@ public class Product {
 		this.pricePerUnit = pricePerUnit;
 	}
 
-	public String getCurrency() {
-		return currency;
-	}
-
-	public void setCurrency(String currency) {
-		this.currency = currency;
-	}
-
 	public int getHeight() {
 		return height;
 	}
@@ -117,11 +107,11 @@ public class Product {
 		this.depth = depth;
 	}
 
-	public Set<ProductPhoto> getPhotos() {
-		return photos;
+	public CurrencyCode getCurrency() {
+		return currency;
 	}
 
-	public void setPhotos(Set<ProductPhoto> photos) {
-		this.photos = photos;
+	public void setCurrency(CurrencyCode currency) {
+		this.currency = currency;
 	}
 }

@@ -13,13 +13,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import controller.CustomerResponseBody;
+import dao.AddressDistanceRepository;
 import dao.AddressRepository;
 import dao.AddressTypeRepository;
 import dao.CountryCodeRepository;
 import dao.CustomerAddressRepository;
 import dao.CustomerRepository;
 import dao.CustomerTelephoneNumberRepository;
+import dao.DepotRepository;
 import dao.ResidenceTypeRepository;
 import dao.SexRepository;
 import dao.TelephoneNumberRepository;
@@ -27,12 +28,15 @@ import dao.TelephoneNumberTypeRepository;
 import dto.CustomerAddressDTO;
 import dto.CustomerTelephoneNumberDTO;
 import dto.CustomerUpdateDTO;
+import dto.RoadRouteDTO;
 import dto.TelephoneNumberDTO;
 import exception.MappingProviderException;
 import exception.NotFoundException;
 import exception.UnauthorizedException;
 import jar.Login;
 import model.Address;
+import model.AddressDistance;
+import model.AddressDistanceId;
 import model.AddressType;
 import model.CountryCode;
 import model.Customer;
@@ -40,7 +44,9 @@ import model.CustomerAddress;
 import model.CustomerAddressID;
 import model.CustomerTelephoneNumber;
 import model.CustomerTelephoneNumberId;
+import model.Depot;
 import model.ResidenceType;
+import model.Shift;
 import model.TelephoneNumber;
 import model.TelephoneNumberType;
 import provider.GoogleMapProvider;
@@ -49,6 +55,7 @@ import provider.GoogleMapProvider;
 public class CustomerService {
 	
 	static final String SEX_NOT_VALID = "Sex is not valid";
+	private static final int MAX_TIME = 1800;
 	
 	@Autowired
 	CustomerRepository customerRepo;
@@ -70,6 +77,10 @@ public class CustomerService {
 	TelephoneNumberRepository telephoneNumberRepo;
 	@Autowired
 	CustomerTelephoneNumberRepository customerTelephoneNumberRepo;
+	@Autowired
+	DepotRepository depotRepo;
+	@Autowired
+	AddressDistanceRepository addressDistanceRepo;
 	@Autowired
 	GoogleMapProvider googleMapProvider;
 	
@@ -190,6 +201,30 @@ public class CustomerService {
 		return customerRepo.findOne(custId);
 	}
 	
+	public Depot getNearestDepot(Address address){
+		List<Depot> depots = depotRepo.findAll();
+		Depot closest = null;
+		long shortestDistance = Long.MAX_VALUE;
+		for(Depot depot : depots){
+			RoadRouteDTO roadRoute = googleMapProvider.getRoadRoute(depot.getAddress(), address);
+			if(roadRoute.getTimeTaken() < shortestDistance){
+				shortestDistance = roadRoute.getTimeTaken();
+				closest = depot;
+			}
+			if(roadRoute.getTimeTaken() < MAX_TIME){
+				AddressDistanceId id = new AddressDistanceId();
+				id.setAddress1(depot.getAddress());
+				id.setAddress2(address);
+				AddressDistance addressDistance = new AddressDistance();
+				addressDistance.setId(id);
+				addressDistance.setRoadDistance(roadRoute.getRoadDistance());
+				addressDistance.setTimeTaken(roadRoute.getTimeTaken());
+				addressDistanceRepo.save(addressDistance);
+			}
+		}
+		return (shortestDistance < MAX_TIME) ? closest : null;
+	}
+	
 	/**
 	 * Handles the act of verifying the foreign keys, and inserting the new address and the address customer relation.
 	 * If the user already has a delivery address associated with it, it is replaced with the new delivery address
@@ -209,17 +244,20 @@ public class CustomerService {
 		if(googleMapProvider.getLatLng(address) == null){
 			throw new MappingProviderException("An error was encountered with our geocoding provider. Please contact a system administrator.");
 		}
-		
+		//Save new address in the address table.
+		addressRepo.save(address);
 		//Check if the user already has a delivery address associated with this account.
 		if(addressType.getAddressTypeId() == 2){
 			CustomerAddress previousAddress = customerAddressRepo.findOneByAddressTypeAddressTypeIdAndCustomerAddressIdOwnerIdCustomerId(addressType.getAddressTypeId(), custObj.getId());
 			if(previousAddress != null){
 				customerAddressRepo.delete(previousAddress);
 			}
+			Depot closest = getNearestDepot(address);
+			if(closest == null){
+				throw new MappingProviderException("Your delivery address is not close enough to our depots, please keep up to date for a potential release in your area.");
+			}
+			address.setDepot(closest);
 		}
-	
-		//Save new address in the address table.
-		addressRepo.save(address);
 			
 		//Set up customer address relation
 		CustomerAddress customerAddress = new CustomerAddress();

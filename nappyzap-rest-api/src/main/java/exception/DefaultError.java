@@ -1,4 +1,4 @@
-package controller;
+package exception;
 
 import java.sql.Timestamp;
 

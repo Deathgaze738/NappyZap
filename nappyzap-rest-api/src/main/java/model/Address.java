@@ -61,6 +61,10 @@ public class Address {
 	@JoinColumn(name = "iso_code", referencedColumnName = "iso_code")
 	private CountryCode country_code;
 	
+	@ManyToOne
+	@JoinColumn(name = "nearest_depot")
+	private Depot depot;
+	
 	@NotNull
 	private double lat;
 	
@@ -201,5 +205,13 @@ public class Address {
 
 	public void setDate_created(Timestamp date_created) {
 		this.date_created = date_created;
+	}
+
+	public Depot getDepot() {
+		return depot;
+	}
+
+	public void setDepot(Depot depot) {
+		this.depot = depot;
 	}
 }

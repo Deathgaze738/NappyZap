@@ -4,6 +4,8 @@ import java.sql.Timestamp;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.OneToOne;
 import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.Table;
@@ -13,8 +15,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 @Entity
 @Table(name = "vehiclegpsposition")
 public class VehicleGPSPosition {
+	@Id
 	@OneToOne
-	@PrimaryKeyJoinColumn(name = "vehicle_registration")
+	@JoinColumn(name = "vehicle_registration")
 	private Vehicle vehicleRegistration;
 	
 	@Column(name = "lat")

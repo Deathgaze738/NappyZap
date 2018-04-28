@@ -15,15 +15,16 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
 
+import org.hibernate.annotations.CreationTimestamp;
+
 @Entity
-@Table(name = "order")
-public class Order {
+@Table(name = "visit")
+public class Visit {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
-	@Column(name = "order_id")
+	@Column(name = "visit_id")
 	private Long id;
 	
-	@ElementCollection(targetClass = OrderStatus.class)
 	@Column(name = "status")
 	@Enumerated(EnumType.STRING)
 	@NotNull
@@ -32,15 +33,10 @@ public class Order {
 	@Column(name = "pickup_time")
 	private Timestamp pickupTime;
 	
-	@NotNull
-	@Column(name = "requested_time")
-	private Timestamp requestTime;
-	
-	@NotNull
 	@Column(name = "time_created")
+	@CreationTimestamp
 	private Timestamp timeCreated;
 	
-	@NotNull
 	@ManyToOne
 	@JoinColumn(name = "driver_id")
 	private Employee driver;
@@ -75,14 +71,6 @@ public class Order {
 
 	public void setPickupTime(Timestamp pickupTime) {
 		this.pickupTime = pickupTime;
-	}
-
-	public Timestamp getRequestTime() {
-		return requestTime;
-	}
-
-	public void setRequestTime(Timestamp requestTime) {
-		this.requestTime = requestTime;
 	}
 
 	public Timestamp getTimeCreated() {

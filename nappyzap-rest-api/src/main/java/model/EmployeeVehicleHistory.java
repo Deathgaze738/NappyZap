@@ -5,14 +5,31 @@ import java.sql.Timestamp;
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
 
 @Entity
 @Table(name = "employeevehiclehistory")
 public class EmployeeVehicleHistory {
-	@EmbeddedId
-	private EmployeeVehicleId id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	@Column(name = "history_id")
+	private Long id;
+	
+	@NotNull
+	@ManyToOne
+	@JoinColumn(name = "employee_id")
+	private Employee employee;
+	
+	@NotNull
+	@ManyToOne
+	@JoinColumn(name = "vehicle_id")
+	private Vehicle vehicle;
 	
 	@NotNull
 	@Column(name = "start_datetime")
@@ -22,12 +39,28 @@ public class EmployeeVehicleHistory {
 	@Column(name = "end_datetime")
 	private Timestamp endTimestamp;
 
-	public EmployeeVehicleId getId() {
+	public Long getId() {
 		return id;
 	}
 
-	public void setId(EmployeeVehicleId id) {
+	public void setId(Long id) {
 		this.id = id;
+	}
+
+	public Employee getEmployee() {
+		return employee;
+	}
+
+	public void setEmployee(Employee employee) {
+		this.employee = employee;
+	}
+
+	public Vehicle getVehicle() {
+		return vehicle;
+	}
+
+	public void setVehicle(Vehicle vehicle) {
+		this.vehicle = vehicle;
 	}
 
 	public Timestamp getStartTimestamp() {

@@ -2,6 +2,8 @@ package model;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
@@ -11,7 +13,12 @@ import javax.validation.constraints.Size;
 @Table(name = "vehicle")
 public class Vehicle {
 	@Id
-	@Column(name = "vehicle_registration")
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	@Column(name = "vehicle_id")
+	private Long id;
+	
+	@NotNull
+	@Column(name = "vehicle_registration", unique = true)
 	@Size(max = 20, message = "Vehicle Registration should be 20 characters maximum.")
 	private String vehicleRegistration;
 	
@@ -70,5 +77,13 @@ public class Vehicle {
 
 	public void setCapacity(int capacity) {
 		this.capacity = capacity;
+	}
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
 	}
 }

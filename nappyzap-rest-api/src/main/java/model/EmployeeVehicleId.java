@@ -20,7 +20,7 @@ public class EmployeeVehicleId implements Serializable{
 	private Employee employee;
 	
 	@ManyToOne
-	@JoinColumn(name = "vehicle_registration")
+	@JoinColumn(name = "vehicle_id")
 	@Valid
 	private Vehicle vehicle;
 

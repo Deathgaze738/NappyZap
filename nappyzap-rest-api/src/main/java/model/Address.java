@@ -1,12 +1,8 @@
 package model;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
-import java.net.URLEncoder;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;

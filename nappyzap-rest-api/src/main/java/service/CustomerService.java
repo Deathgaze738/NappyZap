@@ -4,14 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import javax.servlet.http.HttpServletResponse;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.ResponseBody;
 
 import dao.AddressDistanceRepository;
 import dao.AddressRepository;
@@ -38,7 +34,6 @@ import model.Address;
 import model.AddressDistance;
 import model.AddressDistanceId;
 import model.AddressType;
-import model.CountryCode;
 import model.Customer;
 import model.CustomerAddress;
 import model.CustomerAddressID;
@@ -46,7 +41,6 @@ import model.CustomerTelephoneNumber;
 import model.CustomerTelephoneNumberId;
 import model.Depot;
 import model.ResidenceType;
-import model.Shift;
 import model.TelephoneNumber;
 import model.TelephoneNumberType;
 import provider.GoogleMapProvider;
@@ -54,7 +48,6 @@ import provider.GoogleMapProvider;
 @Service
 public class CustomerService {
 	
-	static final String SEX_NOT_VALID = "Sex is not valid";
 	private static final int MAX_TIME = 1800;
 	
 	@Autowired

@@ -3,9 +3,6 @@ package service;
 import javax.transaction.Transactional;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.config.ResourceNotFoundException;
-import org.springframework.core.io.Resource;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -18,10 +15,7 @@ import exception.NotFoundException;
 import exception.UnauthorizedException;
 import jar.Login;
 import model.Address;
-import model.Customer;
 import model.Employee;
-import model.EmployeeType;
-import model.Sex;
 
 @Service
 public class EmployeeService {

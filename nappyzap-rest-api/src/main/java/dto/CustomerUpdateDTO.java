@@ -2,16 +2,6 @@ package dto;
 
 import java.sql.Date;
 
-import javax.persistence.ForeignKey;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
-
-import org.springframework.format.annotation.DateTimeFormat;
-
-import model.Sex;
-
 /**
  * DTO containing only the fields which are updateable after an account has been created.
  * @author Aaron

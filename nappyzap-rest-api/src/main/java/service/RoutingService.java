@@ -1,7 +1,6 @@
 package service;
 
 import java.sql.Date;
-import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -35,14 +34,13 @@ import model.Address;
 import model.AddressDistance;
 import model.AddressDistanceId;
 import model.Customer;
-import model.CustomerAddress;
 import model.Depot;
-import model.Visit;
 import model.OrderStatus;
 import model.Route;
 import model.RouteStop;
 import model.RouteStopId;
 import model.Shift;
+import model.Visit;
 import provider.GoogleMapProvider;
 
 @Service

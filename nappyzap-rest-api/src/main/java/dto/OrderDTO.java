@@ -2,8 +2,8 @@ package dto;
 
 import java.sql.Date;
 
-import model.Visit;
 import model.Shift;
+import model.Visit;
 
 public class OrderDTO {
 	private Visit order;
